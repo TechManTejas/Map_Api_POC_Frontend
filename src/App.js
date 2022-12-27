@@ -30,6 +30,10 @@ function App() {
 
           </form>
         </div>
+
+        <div className="absolute flex justify-center items-center w-screen h-screen font-extrabold">
+          O
+        </div>
       </div>
       
     </>
