@@ -1,24 +1,38 @@
-import logo from './logo.svg';
-import './App.css';
-
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <div className="bg-blue-800 w-screen h-screen">
+        <div className="absolute">
+          <form class="w-full max-w-lg">
+
+              <div class="w-full">
+                <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" type="text" placeholder="Name" />
+              </div>
+
+              <div class="w-full">
+                <button class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 hover:bg-gray-300 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" type="submit">
+                  Add Location
+                </button>
+              </div>
+            
+          </form>
+          <form class="w-full max-w-lg">
+
+            <div class="w-full">
+              <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" type="number" placeholder="Radius (km)" defaultValue={3} />
+            </div>
+
+            <div class="w-full">
+              <button class="appearance-none block w-full bg-gray-200 text-gray-700 border border-red-500 hover:bg-gray-300 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" type="submit">
+                Get Markers
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+      
+    </>
   );
 }
 
