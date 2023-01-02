@@ -1,134 +1,155 @@
-import React, { useState } from 'react';
-import Map from "./Map/Map";
-import  Layers  from "./Layers/Layers";
-import TileLayer from "./Layers/TileLayer";
-import VectorLayer from "./Layers/VectorLayer";
-import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
-import osm from "./Source/osm";
-import vector from "./Source/vector";
-import { fromLonLat, get } from 'ol/proj';
-import GeoJSON from 'ol/format/GeoJSON';
-import  Controls  from "./Controls/Controls";
-import FullScreenControl from "./Controls/FullScreenControl";
+import React, { useRef, useEffect, useState } from 'react';
+import mapboxgl from '!mapbox-gl'; // eslint-disable-line import/no-webpack-loader-syntax
 
-let styles = {
-  'MultiPolygon': new Style({
-    stroke: new Stroke({
-      color: 'blue',
-      width: 1,
-    }),
-    fill: new Fill({
-      color: 'rgba(0, 0, 255, 0.1)',
-    }),
-  }),
-};
-const geojsonObject = {
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "properties": {
-        "kind": "county",
-        "name": "Wyandotte",
-        "state": "KS"
-      },
-      "geometry": {
-        "type": "MultiPolygon",
-        "coordinates": [
-          [
-            [
-              [-94.8627, 39.202],
-              [-94.901, 39.202],
-              [-94.9065, 38.9884],
-              [-94.8682, 39.0596],
-              [-94.6053, 39.0432],
-              [-94.6053, 39.1144],
-              [-94.5998, 39.1582],
-              [-94.7422, 39.1691],
-              [-94.7751, 39.202],
-              [-94.8627, 39.202]
-            ]
-          ]
-        ]
-      }
-    }
-  ]
-}; // see full geojson object in Github
-const geojsonObject2 = {
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "properties": {
-        "kind": "county",
-        "name": "Johnson",
-        "state": "KS"
-      },
-      "geometry": {
-        "type": "MultiPolygon",
-        "coordinates": [
-          [
-            [
-              [-94.9065, 38.9884],
-              [-95.0544, 38.9829],
-              [-95.0544, 38.7365],
-              [-94.9668, 38.7365],
-              [-94.6108, 38.7365],
-              [-94.6108, 38.846],
-              [-94.6053, 39.0432],
-              [-94.8682, 39.0596],
-              [-94.9065, 38.9884]
-            ]
-          ]
-        ]
-      }
-    }
-  ]
-}; // see full geojson object in Github
+mapboxgl.accessToken = 'pk.eyJ1IjoidGVqYXMtdmFpai1zYW5nbmFrIiwiYSI6ImNsY2FzdmNiMTB4YnAzcWxoNXJpcWlwbTMifQ.7KVRTljFZ_9pPG1GP--xDw';
+
+var markers = [];
+
 const App = () => {
-  const [center, setCenter] = useState([-94.9065, 38.9884]);
-  const [zoom, setZoom] = useState(9);
-  const [showLayer1, setShowLayer1] = useState(true);
-  const [showLayer2, setShowLayer2] = useState(true);
-  
+
+  const mapContainer = useRef(null);
+  const map = useRef(null);
+  const [lng, setLng] = useState(73.8465579312512);
+  const [lat, setLat] = useState(18.650317441227628);
+  const [zoom, setZoom] = useState(12);
+
+  const [radius, setRadius] = useState(3)
+
+  function distance(lat1, lon1, lat2, lon2, unit) {
+    if ((lat1 == lat2) && (lon1 == lon2)) {
+      return 0;
+    }
+    else {
+      var radlat1 = Math.PI * lat1 / 180;
+      var radlat2 = Math.PI * lat2 / 180;
+      var theta = lon1 - lon2;
+      var radtheta = Math.PI * theta / 180;
+      var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+      if (dist > 1) {
+        dist = 1;
+      }
+      dist = Math.acos(dist);
+      dist = dist * 180 / Math.PI;
+      dist = dist * 60 * 1.1515;
+      if (unit == "K") { dist = dist * 1.609344 }
+      if (unit == "N") { dist = dist * 0.8684 }
+      return dist;
+    }
+  }
+
+  var createGeoJSONCircle = function (center, radiusInKm, points) {
+    if (!points) points = 64;
+
+    var coords = {
+      latitude: center[1],
+      longitude: center[0]
+    };
+
+    var km = radiusInKm;
+
+    var ret = [];
+    var distanceX = km / (111.320 * Math.cos(coords.latitude * Math.PI / 180));
+    var distanceY = km / 110.574;
+
+    var theta, x, y;
+    for (var i = 0; i < points; i++) {
+      theta = (i / points) * (2 * Math.PI);
+      x = distanceX * Math.cos(theta);
+      y = distanceY * Math.sin(theta);
+
+      ret.push([coords.longitude + x, coords.latitude + y]);
+    }
+    ret.push(ret[0]);
+
+    return {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [{
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [ret]
+          }
+        }]
+      }
+    };
+  };
+
+  function setMarker(e) {
+    console.log("WHAT ")
+    map.current.getSource('polygon').setData(createGeoJSONCircle([e.lngLat.lng, e.lngLat.lat], radius).data);
+    markers.forEach((marker) => {
+      if(distance(
+        marker.getLngLat().lat, marker.getLngLat().lng, 
+        e.lngLat.lat, e.lngLat.lng, "K"
+      )>3)
+        marker.remove()
+    })
+  }
+
+  useEffect(() => {
+    if (map.current) return; // initialize map only once
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [lng, lat],
+      zoom: zoom,
+    });
+
+  });
+
+  useEffect(() => {
+    if (!map.current) return; // wait for map to initialize
+    
+    map.current.on('load',() => {
+
+      map.current.addSource("polygon", createGeoJSONCircle([0, 0], radius));
+
+      map.current.addLayer({
+        "id": "polygon",
+        "type": "fill",
+        "source": "polygon",
+        "layout": {},
+        "paint": {
+          "fill-color": "red",
+          "fill-opacity": 0.2
+        }
+      });
+    });
+    
+    map.current.on('move', () => {
+      setLng(map.current.getCenter().lng.toFixed(4));
+      setLat(map.current.getCenter().lat.toFixed(4));
+      setZoom(map.current.getZoom().toFixed(2));
+    });
+
+    map.current.on('click', (e) => {
+      console.log(e.lngLat);
+      var marker = new mapboxgl.Marker().setLngLat(e.lngLat).addTo(map.current)
+      markers.push(marker)
+    });
+
+    map.current.on('contextmenu', (e) => {
+      setMarker(e)
+    });
+  },[]);
+
   return (
     <div>
-      <Map center={fromLonLat(center)} zoom={zoom}>
-        <Layers>
-          <TileLayer
-            source={osm()}
-            zIndex={0}
-          />
-          {showLayer1 && (
-            <VectorLayer
-              source={vector({ features: new GeoJSON().readFeatures(geojsonObject, { featureProjection: get('EPSG:3857') }) })}
-              style={styles.MultiPolygon}
-            />
-          )}
-          {showLayer2 && (
-            <VectorLayer
-              source={vector({ features: new GeoJSON().readFeatures(geojsonObject2, { featureProjection: get('EPSG:3857') }) })}
-              style={styles.MultiPolygon}
-            />
-          )}
-        </Layers>
-        <Controls>
-          <FullScreenControl />
-        </Controls>
-      </Map>
-      <div>
-        <input
-          type="checkbox"
-          checked={showLayer1}
-          onChange={event => setShowLayer1(event.target.checked)}
-        /> Johnson County
+      <div className="sidebar">
+        Longitude: {lng} | Latitude: {lat} | Zoom: {zoom}
       </div>
-      <div>
-        <input
-          type="checkbox"
-          checked={showLayer2}
-          onChange={event => setShowLayer2(event.target.checked)}
-        /> Wyandotte County</div>
+
+      <div className="absolute font-bold z-10 bg-slate-200" style={{top:"45px", left:"15px"}}>
+        Radius: 
+        <input className='m-1 h-6' type='number' value={radius} onChange={(e) => setRadius(e.target.value)} />
+      </div>
+
+      <div ref={mapContainer} className="h-screen overflow-y-hidden" />
+      
+      
     </div>
   );
 }
